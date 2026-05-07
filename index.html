@@ -3,677 +3,856 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Controle de Ofícios — Recuperação de Celulares</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<title>Sistema de Controle de Ofícios – DPOUR/PCPA</title>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4"></script>
+<script src="https://unpkg.com/docx@7.7.0/build/index.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
 <style>
-:root {
-  --bg: #f4f3ef;
-  --surface: #ffffff;
-  --border: #d6d3cc;
-  --border-light: #e8e5df;
-  --text: #1a1916;
-  --text-muted: #6b6860;
-  --text-faint: #9c9a94;
-  --accent: #1a3a5c;
-  --accent-light: #e8eff7;
-  --warn: #7a4a00;
-  --warn-bg: #fef3e0;
-  --danger: #8b1a1a;
-  --danger-bg: #fdeaea;
-  --success: #1a5c2e;
-  --success-bg: #e6f4ec;
-  --info: #1a3a5c;
-  --info-bg: #e8eff7;
-  --purple: #4a1a7a;
-  --purple-bg: #f0eafa;
-  --mono: 'IBM Plex Mono', monospace;
-  --sans: 'IBM Plex Sans', sans-serif;
-  --radius: 6px;
-  --radius-lg: 10px;
-}
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: var(--sans); background: var(--bg); color: var(--text); font-size: 14px; min-height: 100vh; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; background: #eef2f7; color: #222; }
 
-header {
-  background: var(--accent);
-  color: #fff;
-  padding: 16px 32px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  position: sticky;
-  top: 0;
-  z-index: 200;
-  border-bottom: 2px solid #0f2540;
-}
-header h1 { font-size: 14px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
-header .subtitle { font-family: var(--mono); font-size: 10px; opacity: 0.55; margin-top: 2px; }
-.sync-status { font-family: var(--mono); font-size: 11px; opacity: 0.75; display: flex; align-items: center; gap: 6px; }
-.sync-dot { width: 7px; height: 7px; border-radius: 50%; background: #4caf50; animation: pulse 2s infinite; }
-.sync-dot.offline { background: #f44336; animation: none; }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  header {
+    background: #1a3a5c; color: #fff;
+    padding: 14px 24px; display: flex; align-items: center; gap: 12px;
+  }
+  header h1 { font-size: 1.1rem; }
+  header span { font-size: 0.85rem; opacity: 0.75; }
 
-main { max-width: 1200px; margin: 0 auto; padding: 24px 20px; }
+  nav {
+    background: #14304e; display: flex; gap: 4px; padding: 0 24px;
+  }
+  nav button {
+    background: none; border: none; color: #aac4e0;
+    padding: 10px 18px; cursor: pointer; font-size: 0.9rem;
+    border-bottom: 3px solid transparent; transition: all 0.2s;
+  }
+  nav button.active, nav button:hover {
+    color: #fff; border-bottom: 3px solid #4da6ff;
+    background: rgba(255,255,255,0.05);
+  }
 
-.stats-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
-.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px 16px; }
-.stat-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 5px; }
-.stat-value { font-size: 26px; font-weight: 600; line-height: 1; }
-.stat-value.warn { color: var(--warn); }
-.stat-value.danger { color: var(--danger); }
-.stat-value.success { color: var(--success); }
-.stat-value.accent { color: var(--accent); }
-.stat-value.purple { color: var(--purple); }
+  .page { display: none; padding: 24px; max-width: 980px; margin: 0 auto; }
+  .page.active { display: block; }
 
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 22px; margin-bottom: 18px; }
-.card-title { font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border-light); }
+  .card {
+    background: #fff; border-radius: 10px; padding: 20px;
+    margin-bottom: 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .card h3 {
+    font-size: 0.95rem; color: #1a3a5c; margin-bottom: 14px;
+    border-bottom: 1px solid #e0e8f0; padding-bottom: 8px;
+  }
 
-.form-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 0.7fr 0.7fr auto; gap: 8px; align-items: end; margin-bottom: 10px; }
-.form-grid-2 { display: grid; grid-template-columns: 0.7fr 2fr; gap: 8px; }
+  .form-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; }
+  .form-group { display: flex; flex-direction: column; flex: 1; min-width: 180px; }
+  .form-group label { font-size: 0.78rem; color: #555; margin-bottom: 4px; font-weight: bold; }
+  .form-group input, .form-group select, .form-group textarea {
+    padding: 8px 10px; border: 1px solid #ccd6e0;
+    border-radius: 6px; font-size: 0.9rem; background: #f9fbfd;
+  }
+  .form-group input:focus, .form-group select:focus {
+    outline: none; border-color: #4da6ff; background: #fff;
+  }
 
-label { display: block; font-family: var(--mono); font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px; }
-input, select, textarea { width: 100%; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 13px; outline: none; transition: border-color 0.15s; height: 34px; }
-textarea { height: auto; padding: 8px 10px; resize: vertical; }
-input:focus, select:focus, textarea:focus { border-color: var(--accent); background: #fff; }
-input[type="date"] { font-family: var(--mono); font-size: 12px; }
-input[type="file"] { height: auto; padding: 6px 10px; font-size: 12px; }
+  .btn {
+    padding: 9px 18px; border: none; border-radius: 6px;
+    cursor: pointer; font-size: 0.88rem; font-weight: bold; transition: background 0.2s;
+  }
+  .btn-primary { background: #1a3a5c; color: #fff; }
+  .btn-primary:hover { background: #0f2540; }
+  .btn-success { background: #1a7a3c; color: #fff; }
+  .btn-success:hover { background: #145e2e; }
+  .btn-danger { background: #c0392b; color: #fff; }
+  .btn-danger:hover { background: #922b21; }
+  .btn-info { background: #2471a3; color: #fff; }
+  .btn-info:hover { background: #1a5276; }
+  .btn-warning { background: #d68910; color: #fff; }
+  .btn-warning:hover { background: #b7770d; }
+  .btn-sm { padding: 5px 12px; font-size: 0.8rem; }
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
 
-.btn { height: 34px; padding: 0 16px; border-radius: var(--radius); font-family: var(--sans); font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid transparent; white-space: nowrap; transition: all 0.15s; }
-.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
-.btn-primary:hover { background: #0f2540; }
-.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-secondary { background: transparent; color: var(--text-muted); border-color: var(--border); }
-.btn-secondary:hover { background: var(--bg); }
-.btn-success { background: var(--success); color: #fff; border-color: var(--success); }
-.btn-danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+  /* IMEIs dinâmicos */
+  .imei-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+  .imei-item { display: flex; gap: 8px; align-items: center; }
+  .imei-item input { flex: 1; padding: 8px 10px; border: 1px solid #ccd6e0; border-radius: 6px; font-size: 0.9rem; background: #f9fbfd; }
+  .imei-item input:focus { outline: none; border-color: #4da6ff; background: #fff; }
+  .btn-remove-imei { background: #c0392b; color: #fff; border: none; border-radius: 4px; padding: 5px 10px; cursor: pointer; font-size: 0.8rem; }
+  .btn-add-imei { background: #1a7a3c; color: #fff; border: none; border-radius: 6px; padding: 7px 14px; cursor: pointer; font-size: 0.82rem; font-weight: bold; }
 
-.filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
-.filter-chip { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-family: var(--mono); cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); transition: all 0.15s; }
-.filter-chip:hover { border-color: var(--accent); color: var(--accent); }
-.filter-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th { background: #1a3a5c; color: #fff; padding: 9px 10px; text-align: left; }
+  td { padding: 8px 10px; border-bottom: 1px solid #e8eef4; vertical-align: top; }
+  tr:hover td { background: #f0f6ff; }
 
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-th { font-family: var(--mono); font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-muted); font-weight: 500; padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; }
-td { padding: 9px 10px; border-bottom: 1px solid var(--border-light); vertical-align: middle; }
-tr:last-child td { border-bottom: none; }
-tr.clickable:hover td { background: #fafaf8; cursor: pointer; }
+  .badge {
+    display: inline-block; padding: 3px 9px; border-radius: 12px;
+    font-size: 0.75rem; font-weight: bold; margin: 2px 0;
+  }
+  .badge-enviado { background: #d6eaf8; color: #1a5276; }
+  .badge-respondido { background: #d5f5e3; color: #1e8449; }
+  .badge-sem-dados { background: #fde8d8; color: #a04000; }
+  .badge-reiterado { background: #fef9e7; color: #9a7d0a; }
 
-.badge { display: inline-block; padding: 2px 9px; border-radius: 20px; font-family: var(--mono); font-size: 10px; font-weight: 500; letter-spacing: 0.03em; }
-.badge-wait { background: var(--warn-bg); color: var(--warn); }
-.badge-done { background: var(--success-bg); color: var(--success); }
-.badge-late { background: var(--danger-bg); color: var(--danger); }
-.badge-op { background: var(--info-bg); color: var(--info); }
-.badge-frutifera { background: var(--success-bg); color: var(--success); }
-.badge-infrutifera { background: var(--danger-bg); color: var(--danger); }
-.badge-pendente { background: var(--warn-bg); color: var(--warn); }
-.badge-purple { background: var(--purple-bg); color: var(--purple); }
+  .alert { padding: 10px 14px; border-radius: 6px; margin-bottom: 12px; font-size: 0.88rem; }
+  .alert-success { background: #d5f5e3; color: #1e8449; border-left: 4px solid #27ae60; }
 
-.act-btn { padding: 3px 9px; border-radius: var(--radius); font-size: 11px; font-family: var(--mono); cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--text-muted); margin-right: 3px; transition: all 0.15s; }
-.act-btn:hover { background: var(--bg); }
-.act-btn.edit { color: var(--accent); border-color: #a8c0d8; }
-.act-btn.edit:hover { background: var(--accent-light); }
-.act-btn.del { color: var(--danger); border-color: #f0b0b0; }
-.act-btn.del:hover { background: var(--danger-bg); }
+  #ocr-status { font-size: 0.82rem; color: #555; margin-top: 6px; min-height: 18px; }
 
-.days-info { font-family: var(--mono); font-size: 10px; margin-top: 2px; }
-.days-ok { color: var(--text-faint); }
-.days-warn { color: var(--warn); }
-.days-late { color: var(--danger); }
-.mono-text { font-family: var(--mono); font-size: 12px; color: var(--text-muted); }
-.empty-state { text-align: center; padding: 40px 24px; color: var(--text-faint); }
-.empty-state p { font-family: var(--mono); font-size: 12px; margin-top: 8px; }
-.loading { text-align: center; padding: 32px; font-family: var(--mono); font-size: 12px; color: var(--text-faint); }
+  /* Histórico expandível */
+  .caso-row { cursor: pointer; background: #f4f8fc; }
+  .caso-row:hover td { background: #e8f0fa; }
+  .caso-row td { font-weight: bold; }
+  .tentativas-row { display: none; }
+  .tentativas-row.open { display: table-row; }
+  .tentativas-inner { padding: 10px 16px; background: #f9fbfd; border-left: 4px solid #2471a3; }
+  .tentativa-item {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 6px 0; border-bottom: 1px solid #e0e8f0; font-size: 0.83rem;
+  }
+  .tentativa-item:last-child { border-bottom: none; }
 
-/* MODAL */
-.modal-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.45);
-  z-index: 500;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 32px 16px;
-  overflow-y: auto;
-}
-.modal-overlay.open { display: flex; }
-.modal {
-  background: var(--surface);
-  border-radius: var(--radius-lg);
-  width: 100%;
-  max-width: 780px;
-  border: 1px solid var(--border);
-  margin: auto;
-}
-.modal-header {
-  background: var(--accent);
-  color: #fff;
-  padding: 14px 20px;
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.modal-header h2 { font-size: 14px; font-weight: 600; letter-spacing: 0.04em; }
-.modal-close { background: none; border: none; color: #fff; font-size: 20px; cursor: pointer; opacity: 0.7; line-height: 1; padding: 0 4px; }
-.modal-close:hover { opacity: 1; }
-.modal-body { padding: 20px; }
-.modal-section { margin-bottom: 18px; padding-bottom: 18px; border-bottom: 1px solid var(--border-light); }
-.modal-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-.modal-section-title { font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px; }
-.modal-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.modal-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
-.modal-grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; }
-.modal-footer { padding: 14px 20px; border-top: 1px solid var(--border-light); display: flex; gap: 8px; justify-content: flex-end; }
+  /* Modal */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45); z-index: 1000;
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: #fff; border-radius: 10px; padding: 28px;
+    width: 440px; max-width: 95vw; box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  }
+  .modal h3 { margin-bottom: 16px; color: #1a3a5c; }
+  .modal .btn-row { justify-content: flex-end; margin-top: 18px; }
 
-/* TENTATIVAS */
-.tentativa-item {
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 12px 14px;
-  margin-bottom: 10px;
-  background: var(--bg);
-}
-.tentativa-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
-.tentativa-num { font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--accent); background: var(--accent-light); padding: 2px 8px; border-radius: 4px; }
-.tentativa-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+  .tabs-operadora { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .tab-op {
+    padding: 5px 12px; border-radius: 16px; border: 2px solid #1a3a5c;
+    background: #fff; color: #1a3a5c; cursor: pointer;
+    font-size: 0.82rem; font-weight: bold; transition: all 0.15s;
+  }
+  .tab-op.selected { background: #1a3a5c; color: #fff; }
 
-/* RESULTADO */
-.resultado-toggle { display: flex; gap: 8px; margin-top: 10px; }
-.resultado-btn {
-  flex: 1;
-  height: 36px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--bg);
-  font-family: var(--mono);
-  font-size: 11px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s;
-  color: var(--text-muted);
-}
-.resultado-btn.frutifera.active { background: var(--success-bg); color: var(--success); border-color: #a8d5b5; }
-.resultado-btn.infrutifera.active { background: var(--danger-bg); color: var(--danger); border-color: #f0b0b0; }
-.resultado-btn:hover { background: var(--surface); }
-
-.receptador-fields { margin-top: 12px; display: none; }
-.receptador-fields.visible { display: block; }
-
-.pdf-link { font-family: var(--mono); font-size: 11px; color: var(--accent); text-decoration: underline; cursor: pointer; }
-
-.toast { position: fixed; bottom: 24px; right: 24px; background: var(--accent); color: #fff; padding: 10px 18px; border-radius: var(--radius); font-size: 13px; font-family: var(--mono); opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; }
-.toast.show { opacity: 1; }
-.toast.error { background: var(--danger); }
-
-@media (max-width: 900px) {
-  .stats-row { grid-template-columns: repeat(3, 1fr); }
-  .form-grid { grid-template-columns: 1fr 1fr; }
-  .modal-grid-3, .modal-grid-4 { grid-template-columns: 1fr 1fr; }
-  main { padding: 14px 10px; }
-}
+  #preview-container { position: absolute; left: -9999px; top: 0; }
 </style>
 </head>
 <body>
 
 <header>
   <div>
-    <h1>Controle de Ofícios — Recuperação de Celulares</h1>
-    <div class="subtitle">Acompanhamento de respostas de operadoras · Delegacia</div>
-  </div>
-  <div class="sync-status">
-    <div class="sync-dot" id="sync-dot"></div>
-    <span id="sync-label">Conectando...</span>
+    <h1>🚔 Sistema de Controle de Ofícios – DPOUR/PCPA</h1>
+    <span>Delegacia de Polícia de Ourém – Recuperação de Celulares</span>
   </div>
 </header>
 
-<main>
-  <div class="stats-row">
-    <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value accent" id="s-total">—</div></div>
-    <div class="stat-card"><div class="stat-label">Aguardando</div><div class="stat-value warn" id="s-aguard">—</div></div>
-    <div class="stat-card"><div class="stat-label">Vencidos</div><div class="stat-value danger" id="s-venc">—</div></div>
-    <div class="stat-card"><div class="stat-label">Frutíferos</div><div class="stat-value success" id="s-frut">—</div></div>
-    <div class="stat-card"><div class="stat-label">Infrutíferos</div><div class="stat-value purple" id="s-infrut">—</div></div>
-  </div>
+<nav>
+  <button class="active" onclick="showPage('novo-caso', this)">➕ Novo Caso</button>
+  <button onclick="showPage('historico', this)">📋 Histórico</button>
+  <button onclick="showPage('configuracoes', this)">⚙️ Configurações</button>
+</nav>
 
-  <!-- FORMULÁRIO NOVO OFÍCIO -->
+<!-- ===================== NOVO CASO ===================== -->
+<div id="novo-caso" class="page active">
+
   <div class="card">
-    <div class="card-title">Registrar novo caso</div>
-    <div class="form-grid">
-      <div><label>Nº BO / IP</label><input id="f-bo" type="text" placeholder="2024/001234"></div>
-      <div><label>IMEI 1</label><input id="f-imei" type="text" placeholder="123456789012345" maxlength="20"></div>
-      <div><label>IMEI 2 (opcional)</label><input id="f-imei2" type="text" placeholder="123456789012346" maxlength="20"></div>
-      <div><label>Operadora</label>
-        <select id="f-op">
-          <option value="Claro">Claro</option>
-          <option value="Vivo">Vivo</option>
-          <option value="TIM">TIM</option>
-          <option value="Oi">Oi</option>
-          <option value="Outra">Outra</option>
-        </select>
+    <h3>📂 1. Upload do Boletim de Ocorrência (PDF)</h3>
+    <div class="form-row">
+      <div class="form-group" style="flex:2">
+        <label>Arquivo PDF do B.O.</label>
+        <input type="file" id="pdf-input" accept="application/pdf">
       </div>
-      <div><label>Data envio</label><input id="f-data" type="date"></div>
-      <div><label>Prazo (dias)</label>
-        <select id="f-prazo">
-          <option value="5">5 dias</option>
-          <option value="10" selected>10 dias</option>
-          <option value="15">15 dias</option>
-          <option value="30">30 dias</option>
-        </select>
+      <div class="form-group" style="flex:0;justify-content:flex-end;">
+        <label> </label>
+        <button class="btn btn-primary" onclick="processarOCR()">🔍 Ler B.O. (OCR)</button>
       </div>
-      <div><label>&nbsp;</label><button class="btn btn-primary" onclick="addOficio()" id="btn-add">+ Adicionar</button></div>
     </div>
-    <div class="form-grid-2">
-      <div><label>Modelo / Cor</label><input id="f-modelo" type="text" placeholder="iPhone 13, preto"></div>
-      <div><label>Observações</label><input id="f-obs" type="text" placeholder="informações adicionais"></div>
-    </div>
+    <div id="ocr-status"></div>
   </div>
 
-  <!-- TABELA -->
   <div class="card">
-    <div class="card-title">Casos registrados</div>
-    <div class="filters">
-      <span class="filter-chip active" onclick="setFilter('todos',this)">Todos</span>
-      <span class="filter-chip" onclick="setFilter('Aguardando',this)">Aguardando</span>
-      <span class="filter-chip" onclick="setFilter('Vencido',this)">Vencidos</span>
-      <span class="filter-chip" onclick="setFilter('Frutífero',this)">Frutíferos</span>
-      <span class="filter-chip" onclick="setFilter('Infrutífero',this)">Infrutíferos</span>
-      <span class="filter-chip" onclick="setFilter('Claro',this)">Claro</span>
-      <span class="filter-chip" onclick="setFilter('Vivo',this)">Vivo</span>
-      <span class="filter-chip" onclick="setFilter('TIM',this)">TIM</span>
-      <span class="filter-chip" onclick="setFilter('Oi',this)">Oi</span>
+    <h3>📝 2. Dados do Caso</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Nº do B.O.</label>
+        <input id="bo" placeholder="00190/2026.100181-5">
+      </div>
+      <div class="form-group">
+        <label>Data do Fato</label>
+        <input id="dataFato" type="date">
+      </div>
     </div>
-    <div id="table-wrap"><div class="loading">Carregando dados...</div></div>
-  </div>
-</main>
 
-<!-- MODAL EDIÇÃO -->
-<div class="modal-overlay" id="modal-overlay" onclick="closeModalOutside(event)">
-  <div class="modal" id="modal">
-    <div class="modal-header">
-      <h2 id="modal-title">Detalhes do caso</h2>
-      <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="form-group" style="margin-bottom:10px">
+      <label>IMEIs do Aparelho(s)</label>
+      <div class="imei-list" id="imei-list">
+        <div class="imei-item">
+          <input type="text" placeholder="IMEI 1 – 15 dígitos" maxlength="20">
+          <button class="btn-remove-imei" onclick="removerImei(this)" title="Remover">✕</button>
+        </div>
+      </div>
+      <button class="btn-add-imei" onclick="adicionarImei()">+ Adicionar IMEI</button>
     </div>
-    <div class="modal-body" id="modal-body"></div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal()">Fechar</button>
-      <button class="btn btn-primary" onclick="saveModal()" id="btn-save-modal">Salvar alterações</button>
+
+    <div class="form-row">
+      <div class="form-group" style="flex:2">
+        <label>Autoridade Policial Requisitante</label>
+        <input id="autoridade" placeholder="Nome completo da autoridade">
+      </div>
+      <div class="form-group">
+        <label>Cargo</label>
+        <input id="cargo" placeholder="Ex: Delegado(a) de Polícia">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>📨 3. Gerar Ofício(s)</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Nº do Ofício</label>
+        <input id="numeroOficio" placeholder="Ex: 06/2026">
+      </div>
+      <div class="form-group">
+        <label>Data do Ofício</label>
+        <input id="dataOficio" type="date">
+      </div>
+    </div>
+
+    <div class="form-group" style="margin-bottom:12px">
+      <label>Selecione as Operadoras</label>
+      <div class="tabs-operadora" id="tabs-operadora">
+        <div class="tab-op selected" data-op="Todas">Todas</div>
+        <div class="tab-op" data-op="Claro S.A">Claro</div>
+        <div class="tab-op" data-op="Telefonica Brasil (Vivo)">Vivo</div>
+        <div class="tab-op" data-op="TIM Brasil S.A">TIM</div>
+        <div class="tab-op" data-op="Oi S.A">Oi</div>
+        <div class="tab-op" data-op="Correios Celular">Correios</div>
+        <div class="tab-op" data-op="Algar Telecom">Algar</div>
+        <div class="tab-op" data-op="Sercomtel">Sercomtel</div>
+      </div>
+    </div>
+
+    <div class="form-group" style="margin-bottom:12px">
+      <label>Observações (opcional)</label>
+      <input id="obs" placeholder="Ex: Reiteração – sem resposta anterior">
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-success" onclick="gerarDocx()">📄 Gerar DOCX</button>
+      <button class="btn btn-danger" onclick="gerarPDF()">🖨️ Gerar PDF</button>
+      <button class="btn btn-info" onclick="salvarCaso()">💾 Salvar no Histórico</button>
+    </div>
+  </div>
+
+  <div id="preview-container">
+    <div id="preview-oficio"></div>
+  </div>
+</div>
+
+<!-- ===================== HISTÓRICO ===================== -->
+<div id="historico" class="page">
+  <div class="card">
+    <h3>📋 Casos Registrados</h3>
+    <div class="btn-row" style="margin-bottom:14px">
+      <button class="btn btn-primary btn-sm" onclick="renderHistorico()">🔄 Atualizar</button>
+      <button class="btn btn-warning btn-sm" onclick="exportarCSV()">⬇️ Exportar CSV</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table id="tabela-historico">
+        <thead>
+          <tr>
+            <th>Nº B.O.</th>
+            <th>IMEIs</th>
+            <th>Data Fato</th>
+            <th>Autoridade</th>
+            <th>Tentativas</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-historico">
+          <tr><td colspan="6" style="text-align:center;color:#888;padding:20px">Nenhum registro ainda.</td></tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
+<!-- ===================== CONFIGURAÇÕES ===================== -->
+<div id="configuracoes" class="page">
+  <div class="card">
+    <h3>⚙️ Configurações da Unidade</h3>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="form-group"><label>Autoridade Policial (padrão)</label><input id="cfg-autoridade" placeholder="Ex: MARCUS ROGÉRIO FONSECA PINTO"></div>
+      <div class="form-group"><label>Cargo (padrão)</label><input id="cfg-cargo" placeholder="Ex: Delegado(a) de Polícia Civil"></div>
+      <div class="form-group"><label>Unidade Policial</label><input id="cfg-unidade" placeholder="Ex: DELEGACIA DE POLÍCIA DE OURÉM"></div>
+      <div class="form-group"><label>Superintendência / RISP</label><input id="cfg-risp" placeholder="Ex: SUPERINTENDÊNCIA REGIONAL DO CAETÉ-6ªRISP"></div>
+      <div class="form-group"><label>Cidade/UF</label><input id="cfg-cidade" placeholder="Ex: OURÉM-PA"></div>
+      <div class="form-group"><label>Endereço da Delegacia</label><input id="cfg-endereco" placeholder="Ex: Rua São Francisco, Bairro Souza – CEP 68.640-000"></div>
+      <div class="form-group"><label>E-mail Funcional</label><input id="cfg-email" placeholder="Ex: ourem@policiacivil.pa.gov.br"></div>
+      <div class="form-group"><label>Telefone</label><input id="cfg-telefone" placeholder="Ex: 91 98562-0224"></div>
+      <div class="form-group"><label>URL do Google Apps Script (backend)</label><input id="cfg-gscript" placeholder="https://script.google.com/macros/s/SEU_ID/exec"></div>
+      <button class="btn btn-primary" onclick="salvarConfigs()" style="width:fit-content">💾 Salvar Configurações</button>
+      <div id="cfg-msg"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Reiteração / Status -->
+<div class="modal-overlay" id="modal-reiterar">
+  <div class="modal">
+    <h3 id="modal-titulo">🔁 Registrar Reiteração</h3>
+    <input type="hidden" id="modal-caso-idx">
+    <input type="hidden" id="modal-tent-idx">
+    <input type="hidden" id="modal-modo"> <!-- 'reiterar' ou 'status' -->
+
+    <div id="modal-reiterar-campos">
+      <div class="form-group" style="margin-bottom:10px">
+        <label>Operadora</label>
+        <select id="modal-operadora">
+          <option>Claro S.A</option>
+          <option>Telefonica Brasil (Vivo)</option>
+          <option>TIM Brasil S.A</option>
+          <option>Oi S.A</option>
+          <option>Correios Celular</option>
+          <option>Algar Telecom</option>
+          <option>Sercomtel</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:10px">
+        <label>Nº do Novo Ofício</label>
+        <input id="modal-num-oficio" placeholder="Ex: 12/2026">
+      </div>
+      <div class="form-group" style="margin-bottom:10px">
+        <label>Data do Ofício</label>
+        <input id="modal-data-oficio" type="date">
+      </div>
+    </div>
+
+    <div id="modal-status-campos">
+      <div class="form-group" style="margin-bottom:10px">
+        <label>Novo Status</label>
+        <select id="modal-status-val">
+          <option value="Enviado">Enviado</option>
+          <option value="Respondido com dados">Respondido com dados</option>
+          <option value="Sem dados">Sem dados</option>
+          <option value="Reiterado">Reiterado</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group" style="margin-bottom:10px">
+      <label>Observação</label>
+      <input id="modal-obs-val" placeholder="Ex: Resposta recebida em 10/05/2026">
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="confirmarModal()">✅ Confirmar</button>
+      <button class="btn btn-danger" onclick="fecharModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
 
 <script>
-const SUPABASE_URL = 'https://fogdqgmherjtimewxjze.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvZ2RxZ21oZXJqdGltZXd4anplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczMDI2OTAsImV4cCI6MjA5Mjg3ODY5MH0.SSsiolofgHIj2iWcja0omET1p25NDmqNZnTH5vhdbP8';
-const API = SUPABASE_URL + '/rest/v1';
-const STORAGE = SUPABASE_URL + '/storage/v1';
-const BUCKET = 'respostas-operadoras';
+// ===================== ESTADO =====================
+let casos = JSON.parse(localStorage.getItem('oficios_casos') || '[]');
+let configs = JSON.parse(localStorage.getItem('oficios_configs') || '{}');
 
-const H = {
-  'apikey': SUPABASE_KEY,
-  'Authorization': 'Bearer ' + SUPABASE_KEY,
-  'Content-Type': 'application/json',
-  'Prefer': 'return=representation'
-};
-
-let oficios = [];
-let tentativas = {};
-let filtro = 'todos';
-let currentOficioId = null;
-
-function toast(msg, isError) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'toast show' + (isError ? ' error' : '');
-  setTimeout(() => t.className = 'toast', 3000);
+// ===================== NAVEGAÇÃO =====================
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (id === 'historico') renderHistorico();
+  if (id === 'configuracoes') carregarConfigs();
 }
 
-function setOnline(v) {
-  document.getElementById('sync-dot').className = 'sync-dot' + (v ? '' : ' offline');
-  document.getElementById('sync-label').textContent = v ? 'Sincronizado' : 'Sem conexão';
+// ===================== OPERADORAS =====================
+document.querySelectorAll('.tab-op').forEach(tab => {
+  tab.addEventListener('click', function() {
+    if (this.dataset.op === 'Todas') {
+      document.querySelectorAll('.tab-op').forEach(t => t.classList.remove('selected'));
+      this.classList.add('selected');
+    } else {
+      document.querySelector('.tab-op[data-op="Todas"]').classList.remove('selected');
+      this.classList.toggle('selected');
+      const algum = [...document.querySelectorAll('.tab-op:not([data-op="Todas"])')].some(t => t.classList.contains('selected'));
+      if (!algum) document.querySelector('.tab-op[data-op="Todas"]').classList.add('selected');
+    }
+  });
+});
+
+function getOperadorasSelecionadas() {
+  const todas = document.querySelector('.tab-op[data-op="Todas"]').classList.contains('selected');
+  if (todas) return ['Claro S.A','Telefonica Brasil (Vivo)','TIM Brasil S.A','Oi S.A','Correios Celular','Algar Telecom','Sercomtel'];
+  return [...document.querySelectorAll('.tab-op.selected')].map(t => t.dataset.op);
 }
 
-function today() { return new Date().toISOString().split('T')[0]; }
-
-function fmtDate(d) {
-  if (!d) return '—';
-  const [y,m,dd] = d.split('-');
-  return dd+'/'+m+'/'+y;
+// ===================== IMEIs DINÂMICOS =====================
+function adicionarImei(valor) {
+  const lista = document.getElementById('imei-list');
+  const div = document.createElement('div');
+  div.className = 'imei-item';
+  div.innerHTML = `<input type="text" placeholder="IMEI – 15 dígitos" maxlength="20" value="${valor||''}">
+    <button class="btn-remove-imei" onclick="removerImei(this)" title="Remover">✕</button>`;
+  lista.appendChild(div);
 }
 
-function prazoDate(dataEnvio, prazo) {
-  const d = new Date(dataEnvio);
-  d.setDate(d.getDate() + parseInt(prazo));
-  return d.toISOString().split('T')[0];
+function removerImei(btn) {
+  const lista = document.getElementById('imei-list');
+  if (lista.children.length <= 1) { alert('Deve haver ao menos 1 IMEI.'); return; }
+  btn.parentElement.remove();
 }
 
-function getStatusOficio(o) {
-  if (o.frutifero === true) return 'Frutífero';
-  if (o.frutifero === false) return 'Infrutífero';
-  if (o.respondido) return 'Respondido';
-  const prazo = new Date(prazoDate(o.data_envio, o.prazo));
-  const now = new Date(); now.setHours(0,0,0,0);
-  return now > prazo ? 'Vencido' : 'Aguardando';
+function getImeis() {
+  return [...document.querySelectorAll('#imei-list .imei-item input')]
+    .map(i => i.value.trim()).filter(v => v.length > 0);
 }
 
-function getDays(dataEnvio, prazo) {
-  const p = new Date(prazoDate(dataEnvio, prazo));
-  const now = new Date(); now.setHours(0,0,0,0);
-  return Math.round((p - now) / (1000*60*60*24));
+function setImeis(lista) {
+  const container = document.getElementById('imei-list');
+  container.innerHTML = '';
+  if (!lista || lista.length === 0) lista = [''];
+  lista.forEach((v, i) => {
+    const div = document.createElement('div');
+    div.className = 'imei-item';
+    div.innerHTML = `<input type="text" placeholder="IMEI ${i+1} – 15 dígitos" maxlength="20" value="${v}">
+      <button class="btn-remove-imei" onclick="removerImei(this)" title="Remover">✕</button>`;
+    container.appendChild(div);
+  });
 }
 
-async function fetchAll() {
+// ===================== OCR =====================
+async function processarOCR() {
+  const file = document.getElementById('pdf-input').files[0];
+  if (!file) return alert('Selecione um arquivo PDF do B.O.');
+  const status = document.getElementById('ocr-status');
+  status.innerHTML = '⏳ Processando OCR... aguarde alguns segundos.';
   try {
-    const [ro, rt] = await Promise.all([
-      fetch(API + '/oficios?order=created_at.desc', { headers: H }),
-      fetch(API + '/tentativas?order=created_at.asc', { headers: H })
-    ]);
-    if (!ro.ok || !rt.ok) throw new Error();
-    oficios = await ro.json();
-    const tList = await rt.json();
-    tentativas = {};
-    tList.forEach(t => {
-      if (!tentativas[t.oficio_id]) tentativas[t.oficio_id] = [];
-      tentativas[t.oficio_id].push(t);
-    });
-    setOnline(true);
-    render();
+    const { data: { text } } = await Tesseract.recognize(file, 'por');
+    const imeis = [...new Set(text.match(/\b\d{15}\b/g) || [])];
+    const bo = text.match(/\d{3,6}\/\d{4}[\.\d\-]*/);
+    const data = text.match(/\d{2}\/\d{2}\/\d{4}/);
+    setImeis(imeis.length ? imeis : ['']);
+    document.getElementById('bo').value = bo?.[0] || '';
+    if (data) {
+      const [d,m,y] = data[0].split('/');
+      document.getElementById('dataFato').value = `${y}-${m}-${d}`;
+    }
+    status.innerHTML = `✅ OCR concluído! ${imeis.length} IMEI(s) encontrado(s). Confira e corrija se necessário.`;
   } catch(e) {
-    setOnline(false);
-    document.getElementById('table-wrap').innerHTML = '<div class="loading">Erro ao conectar. Verifique sua conexão.</div>';
+    status.innerHTML = '❌ Erro no OCR. Preencha os dados manualmente.';
   }
 }
 
-async function addOficio() {
-  const bo = document.getElementById('f-bo').value.trim();
-  const imei = document.getElementById('f-imei').value.trim();
-  const imei2 = document.getElementById('f-imei2').value.trim();
-  const op = document.getElementById('f-op').value;
-  const data = document.getElementById('f-data').value || today();
-  const prazo = document.getElementById('f-prazo').value;
-  const modelo = document.getElementById('f-modelo').value.trim();
-  const obs = document.getElementById('f-obs').value.trim();
-  if (!bo || !imei) { toast('Preencha o nº BO e o IMEI 1.', true); return; }
-  const btn = document.getElementById('btn-add');
-  btn.disabled = true; btn.textContent = 'Salvando...';
-  try {
-    const r = await fetch(API + '/oficios', {
-      method: 'POST', headers: H,
-      body: JSON.stringify({ bo, imei, imei2: imei2||null, operadora: op, data_envio: data, prazo: parseInt(prazo), obs: [modelo, obs].filter(Boolean).join(' | ') || null, respondido: false })
+// ===================== DATAS =====================
+function diaSeguinte(dataStr) {
+  if (!dataStr) return '___/___/______';
+  const d = new Date(dataStr + 'T12:00:00');
+  d.setDate(d.getDate() + 1);
+  return d.toLocaleDateString('pt-BR');
+}
+
+function dataExtenso(dataStr) {
+  if (!dataStr) return '';
+  const d = new Date(dataStr + 'T12:00:00');
+  return d.toLocaleDateString('pt-BR', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+}
+
+// ===================== MONTAR DADOS DO OFÍCIO =====================
+function montarDados(operadora, imeis, overrides) {
+  const o = overrides || {};
+  const bo = o.bo || document.getElementById('bo').value || '___';
+  const dataFato = o.dataFato || document.getElementById('dataFato').value;
+  const numeroOficio = o.numeroOficio || document.getElementById('numeroOficio').value || '___';
+  const dataOficio = o.dataOficio || document.getElementById('dataOficio').value;
+  const autoridade = o.autoridade || document.getElementById('autoridade').value || configs.autoridade || '___';
+  const cargo = o.cargo || document.getElementById('cargo').value || configs.cargo || '___';
+
+  const cidade = configs.cidade || 'OURÉM-PA';
+  const unidade = configs.unidade || 'DELEGACIA DE POLÍCIA DE OURÉM';
+  const risp = configs.risp || 'SUPERINTENDÊNCIA REGIONAL DO CAETÉ-6ªRISP';
+  const endereco = configs.endereco || 'Rua São Francisco, Bairro Souza – CEP 68.640-000';
+  const email = configs.email || 'ourem@policiacivil.pa.gov.br';
+  const telefone = configs.telefone || '91 98562-0224';
+  const dataOficioFmt = dataOficio ? dataExtenso(dataOficio) : dataExtenso(new Date().toISOString().split('T')[0]);
+  const periodoInicio = diaSeguinte(dataFato);
+
+  return { bo, imeis, dataFato, numeroOficio, dataOficio: dataOficioFmt,
+    autoridade, cargo, cidade, unidade, risp, endereco, email, telefone,
+    periodoInicio, operadora };
+}
+
+// ===================== GERAR DOCX =====================
+async function gerarDocx(overrides, imeisList) {
+  const ops = getOperadorasSelecionadas();
+  if (!ops.length) return alert('Selecione ao menos uma operadora.');
+  if (!document.getElementById('numeroOficio').value && !overrides) return alert('Informe o Nº do Ofício.');
+  const imeis = imeisList || getImeis();
+  if (!imeis.length) return alert('Informe ao menos um IMEI.');
+
+  for (const op of ops) {
+    const d = montarDados(op, imeis, overrides);
+    const paragrafos = gerarParagrafosDocx(d);
+    const doc = new docx.Document({ sections: [{ children: paragrafos }] });
+    const blob = await docx.Packer.toBlob(doc);
+    saveAs(blob, `Oficio_${d.numeroOficio.replace('/','_')}_${op.replace(/\s/g,'_')}.docx`);
+  }
+  if (!overrides) alert(`${ops.length} ofício(s) DOCX gerado(s)!`);
+}
+
+function gerarParagrafosDocx(d) {
+  const P = docx.Paragraph, T = docx.TextRun;
+  const bold = t => new T({ text: t, bold: true });
+  const normal = t => new T({ text: t });
+  const br = () => new P({ children: [] });
+
+  const imeiLetras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const imeiParags = d.imeis.map((imei, i) =>
+    new P({ children: [bold(`${imeiLetras[i]}) IMEI ${i+1}: ${imei}`)] })
+  );
+
+  return [
+    new P({ alignment: docx.AlignmentType.CENTER, children: [bold('POLÍCIA CIVIL DO ESTADO DO PARÁ')] }),
+    new P({ alignment: docx.AlignmentType.CENTER, children: [bold(d.risp)] }),
+    new P({ alignment: docx.AlignmentType.CENTER, children: [bold(d.unidade)] }),
+    br(),
+    new P({ alignment: docx.AlignmentType.CENTER, children: [bold(`OFÍCIO Nº ${d.numeroOficio}/RC/DPOUR/PCPA`)] }),
+    br(),
+    new P({ children: [normal(`${d.cidade}, ${d.dataOficio}.`)] }),
+    br(),
+    new P({ children: [bold('A (o) Senhor (a)'), normal('\nGerente/Diretor(a)'), normal(`\n${d.operadora}`)] }),
+    br(),
+    new P({ children: [bold(`BOP nº ${d.bo}`)] }),
+    new P({ children: [bold('Assunto: '), normal('Solicitação de dados cadastrais e CHIPs vinculados.')] }),
+    br(),
+    new P({ children: [normal('Prezado(a) Senhor(a),')] }),
+    br(),
+    new P({ alignment: docx.AlignmentType.JUSTIFIED, children: [
+      bold('DESPACHO: '), normal('A recusa no recebimento deste implicará identificação do recusante, havendo intimação imediata para comparecimento à Delegacia, informando-se superior hierárquico. '),
+      bold('CONDUÇÃO: '), normal('Havendo recusa, novamente, de informação da qualificação do primeiro ou primeira servidor(a) ou funcionário(a) deste local em face do recebimento deste oficio será, também, passível de prisão criminal em face do crime de desobediência, de acordo com o art. 330, do Código Penal, além da prática do art. 68, do Decreto-Lei nº 3.688/1941 – Lei das Contravenções Penais – recusa de dados sobre a própria identificação ou qualificação.')
+    ]}),
+    br(),
+    new P({ alignment: docx.AlignmentType.JUSTIFIED, children: [normal('1. Incide o presente ato sobre as atribuições de Polícia Judiciária, conforme o art. 144, §§ 1º e 4º da Constituição Federal, ex vi arts. 3º, 4º, 5º, 6º, todos do Código de Processo Penal, c/c art. 2º, § 2º da Lei 12.830/13, c/c art. 17-B, da Lei 12.683/12. Coalescido a este ofício despacho (supra) sobre o método de notificação e finalização deste procedimento, caso haja problemática para seu desfecho.')] }),
+    br(),
+    new P({ alignment: docx.AlignmentType.JUSTIFIED, children: [normal('2. Há expediente investigativo para a caracterização de prática criminosa onde se objetiva a constituição de autoria e materialidade delitiva mediante coalescimento de informações para complementar a atividade em tela.')] }),
+    br(),
+    new P({ alignment: docx.AlignmentType.JUSTIFIED, children: [normal('3. Cediça a inexistência de proteção legal por sigilo de dados cadastrais e informação de numerais em si mesmos considerados, de acordo com o conteúdo legislativo acima demonstrado e a manifestação da jurisprudência dominante. (STF.Pleno.RE nº 418.416-8; STF, MS 23452/RJ; RTJ 179/225, 270; TRF-1ªRegião. 3ª Turma. HC nº 2007.01.00.003265-4/DF).')] }),
+    br(),
+    new P({ alignment: docx.AlignmentType.JUSTIFIED, children: [
+      normal('4. Consoante os motivos expostos e, reconhecido legalmente o poder conferido à Polícia Judiciária de obter exclusivamente as informações cadastrais e numerais cadastrados, os quais informam a qualificação pessoal, filiação e endereço, além de numerais cadastrados junto às operadoras de telefonia móvel, independente de ordem judicial, mantidas pelas empresas telefônicas, instituições financeiras, provedores de internet, administradora de cartão de crédito e Justiça Eleitoral (art. 17-B, da lei 12.683/12), '),
+      bold('REQUISITO a Vossa Senhoria, ou seu substituto que, NO PRAZO MÁXIMO DE 24 HORAS, formalize o envio e a entrega dos NUMERAIS/CHIPS VINCULADOS AOS IMEIS INFRAMENCIONADOS E QUE TENHAM UTILIZADO A REDE DE COMUNICAÇÃO DA OPERADORA DE TELEFONIA, NO PERÍODO DE '),
+      bold(`${d.periodoInicio} ATÉ A DATA DE RESPOSTA DESTA REQUISIÇÃO`),
+      bold(', BEM COMO OS CADASTROS DOS NUMERAIS/CHIPS CADASTRADOS NO PERÍODO SOLICITADO:')
+    ]}),
+    br(),
+    ...imeiParags,
+    br(),
+    new P({ alignment: docx.AlignmentType.JUSTIFIED, children: [normal(`5. Por fim, os dados de cadastro deverão ser enviados para o e-mail funcional da autoridade policial requisitante ${d.email}.`)] }),
+    br(),
+    new P({ alignment: docx.AlignmentType.JUSTIFIED, children: [normal('6. A possível renitência em cumprir esta requisição poderá gerar responsabilidade penal em face da prática dos crimes de prevaricação e/ou desobediência com infração das disposições legais, como bem destacam os arts. 319 e 330, do Código Penal.')] }),
+    br(),
+    new P({ children: [normal('Atenciosamente,')] }),
+    br(), br(),
+    new P({ alignment: docx.AlignmentType.CENTER, children: [bold(d.autoridade)] }),
+    new P({ alignment: docx.AlignmentType.CENTER, children: [normal(d.cargo)] }),
+    new P({ alignment: docx.AlignmentType.CENTER, children: [normal(d.unidade)] }),
+    new P({ alignment: docx.AlignmentType.CENTER, children: [normal('POLÍCIA CIVIL DO ESTADO DO PARÁ')] }),
+    br(),
+    new P({ alignment: docx.AlignmentType.CENTER, children: [normal(`Delegacia de Polícia de OURÉM/PA – ${d.endereco}`)] }),
+    new P({ alignment: docx.AlignmentType.CENTER, children: [normal(`E-mail: ${d.email} – Telefone: ${d.telefone}`)] }),
+  ];
+}
+
+// ===================== GERAR PDF =====================
+async function gerarPDF(overrides, imeisList) {
+  const ops = getOperadorasSelecionadas();
+  if (!ops.length) return alert('Selecione ao menos uma operadora.');
+  if (!document.getElementById('numeroOficio').value && !overrides) return alert('Informe o Nº do Ofício.');
+  const imeis = imeisList || getImeis();
+  if (!imeis.length) return alert('Informe ao menos um IMEI.');
+
+  for (const op of ops) {
+    const d = montarDados(op, imeis, overrides);
+    document.getElementById('preview-oficio').innerHTML = gerarHTMLOficio(d);
+    await html2pdf().set({
+      margin: [20,20,20,20],
+      filename: `Oficio_${d.numeroOficio.replace('/','_')}_${op.replace(/\s/g,'_')}.pdf`,
+      image: { type:'jpeg', quality:0.98 },
+      html2canvas: { scale:2 },
+      jsPDF: { unit:'mm', format:'a4', orientation:'portrait' }
+    }).from(document.getElementById('preview-oficio')).save();
+  }
+  if (!overrides) alert(`${ops.length} ofício(s) PDF gerado(s)!`);
+}
+
+function gerarHTMLOficio(d) {
+  const imeiLetras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const imeisHTML = d.imeis.map((imei, i) =>
+    `<div><strong>${imeiLetras[i]}) IMEI ${i+1}: ${imei}</strong></div>`
+  ).join('<br>');
+
+  return `<div style="font-family:'Times New Roman',serif;font-size:12pt;line-height:1.6;color:#000;padding:10px">
+    <div style="text-align:center;font-weight:bold">POLÍCIA CIVIL DO ESTADO DO PARÁ</div>
+    <div style="text-align:center;font-weight:bold">${d.risp}</div>
+    <div style="text-align:center;font-weight:bold">${d.unidade}</div><br>
+    <div style="text-align:center;font-weight:bold">OFÍCIO Nº ${d.numeroOficio}/RC/DPOUR/PCPA</div><br>
+    <div>${d.cidade}, ${d.dataOficio}.</div><br>
+    <div><strong>A (o) Senhor (a)</strong><br>Gerente/Diretor(a)<br>${d.operadora}</div><br>
+    <div><strong>BOP nº ${d.bo}</strong></div>
+    <div><strong>Assunto:</strong> Solicitação de dados cadastrais e CHIPs vinculados.</div><br>
+    <div>Prezado(a) Senhor(a),</div><br>
+    <div style="text-align:justify"><strong>DESPACHO:</strong> A recusa no recebimento deste implicará identificação do recusante, havendo intimação imediata para comparecimento à Delegacia, informando-se superior hierárquico. <strong>CONDUÇÃO:</strong> Havendo recusa, novamente, de informação da qualificação do primeiro ou primeira servidor(a) ou funcionário(a) deste local em face do recebimento deste oficio será, também, passível de prisão criminal em face do crime de desobediência, de acordo com o art. 330, do Código Penal, além da prática do art. 68, do Decreto-Lei nº 3.688/1941 – Lei das Contravenções Penais – recusa de dados sobre a própria identificação ou qualificação.</div><br>
+    <div style="text-align:justify">1. Incide o presente ato sobre as atribuições de Polícia Judiciária, conforme o art. 144, §§ 1º e 4º da Constituição Federal, ex vi arts. 3º, 4º, 5º, 6º, todos do Código de Processo Penal, c/c art. 2º, § 2º da Lei 12.830/13, c/c art. 17-B, da Lei 12.683/12. Coalescido a este ofício despacho (supra) sobre o método de notificação e finalização deste procedimento, caso haja problemática para seu desfecho.</div><br>
+    <div style="text-align:justify">2. Há expediente investigativo para a caracterização de prática criminosa onde se objetiva a constituição de autoria e materialidade delitiva mediante coalescimento de informações para complementar a atividade em tela.</div><br>
+    <div style="text-align:justify">3. Cediça a inexistência de proteção legal por sigilo de dados cadastrais e informação de numerais em si mesmos considerados, de acordo com o conteúdo legislativo acima demonstrado e a manifestação da jurisprudência dominante. (STF.Pleno.RE nº 418.416-8; STF, MS 23452/RJ; RTJ 179/225, 270; TRF-1ªRegião. 3ª Turma. HC nº 2007.01.00.003265-4/DF).</div><br>
+    <div style="text-align:justify">4. Consoante os motivos expostos e, reconhecido legalmente o poder conferido à Polícia Judiciária de obter exclusivamente as informações cadastrais e numerais cadastrados, os quais informam a qualificação pessoal, filiação e endereço, além de numerais cadastrados junto às operadoras de telefonia móvel, independente de ordem judicial, mantidas pelas empresas telefônicas, instituições financeiras, provedores de internet, administradora de cartão de crédito e Justiça Eleitoral (art. 17-B, da lei 12.683/12), <strong>REQUISITO a Vossa Senhoria, ou seu substituto que, NO PRAZO MÁXIMO DE 24 HORAS, formalize o envio e a entrega dos NUMERAIS/CHIPS VINCULADOS AOS IMEIS INFRAMENCIONADOS E QUE TENHAM UTILIZADO A REDE DE COMUNICAÇÃO DA OPERADORA DE TELEFONIA, NO PERÍODO DE ${d.periodoInicio} ATÉ A DATA DE RESPOSTA DESTA REQUISIÇÃO, BEM COMO OS CADASTROS DOS NUMERAIS/CHIPS CADASTRADOS NO PERÍODO SOLICITADO:</strong></div><br>
+    ${imeisHTML}<br>
+    <div style="text-align:justify">5. Por fim, os dados de cadastro deverão ser enviados para o e-mail funcional da autoridade policial requisitante ${d.email}.</div><br>
+    <div style="text-align:justify">6. A possível renitência em cumprir esta requisição poderá gerar responsabilidade penal em face da prática dos crimes de prevaricação e/ou desobediência com infração das disposições legais, como bem destacam os arts. 319 e 330, do Código Penal.</div><br>
+    <div>Atenciosamente,</div><br><br>
+    <div style="text-align:center"><strong>${d.autoridade}</strong><br>${d.cargo}<br>${d.unidade}<br>POLÍCIA CIVIL DO ESTADO DO PARÁ</div><br>
+    <div style="text-align:center;font-size:10pt">Delegacia de Polícia de OURÉM/PA – ${d.endereco}<br>E-mail: ${d.email} – Telefone: ${d.telefone}</div>
+  </div>`;
+}
+
+// ===================== SALVAR CASO =====================
+function salvarCaso() {
+  const bo = document.getElementById('bo').value;
+  const numeroOficio = document.getElementById('numeroOficio').value;
+  const ops = getOperadorasSelecionadas();
+  const imeis = getImeis();
+  if (!bo) return alert('Informe o Nº do B.O.');
+  if (!numeroOficio) return alert('Informe o Nº do Ofício.');
+  if (!imeis.length) return alert('Informe ao menos um IMEI.');
+  if (!ops.length) return alert('Selecione ao menos uma operadora.');
+
+  const hoje = new Date().toISOString().split('T')[0];
+  const dataOficio = document.getElementById('dataOficio').value || hoje;
+
+  // Verifica se já existe caso com esse BO
+  let casoIdx = casos.findIndex(c => c.bo === bo);
+
+  if (casoIdx === -1) {
+    // Novo caso
+    casos.push({
+      id: Date.now(),
+      bo,
+      imeis,
+      dataFato: document.getElementById('dataFato').value,
+      autoridade: document.getElementById('autoridade').value || configs.autoridade || '',
+      cargo: document.getElementById('cargo').value || configs.cargo || '',
+      tentativas: []
     });
-    if (!r.ok) throw new Error();
-    ['f-bo','f-imei','f-imei2','f-modelo','f-obs'].forEach(id => document.getElementById(id).value = '');
-    toast('Caso registrado com sucesso.');
-    await fetchAll();
-  } catch(e) { toast('Erro ao salvar.', true); }
-  finally { btn.disabled = false; btn.textContent = '+ Adicionar'; }
-}
-
-async function delOficio(id) {
-  if (!confirm('Remover este caso permanentemente?')) return;
-  try {
-    const r = await fetch(API + '/oficios?id=eq.' + id, { method: 'DELETE', headers: H });
-    if (!r.ok) throw new Error();
-    toast('Caso removido.');
-    await fetchAll();
-  } catch(e) { toast('Erro ao remover.', true); }
-}
-
-function setFilter(f, el) {
-  filtro = f;
-  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
-  el.classList.add('active');
-  render();
-}
-
-function render() {
-  let list = oficios;
-  if (filtro !== 'todos') {
-    const ops = ['Claro','Vivo','TIM','Oi','Outra'];
-    if (ops.includes(filtro)) list = oficios.filter(o => o.operadora === filtro);
-    else list = oficios.filter(o => getStatusOficio(o) === filtro);
+    casoIdx = casos.length - 1;
   }
 
-  document.getElementById('s-total').textContent = oficios.length;
-  document.getElementById('s-aguard').textContent = oficios.filter(o => getStatusOficio(o) === 'Aguardando').length;
-  document.getElementById('s-venc').textContent = oficios.filter(o => getStatusOficio(o) === 'Vencido').length;
-  document.getElementById('s-frut').textContent = oficios.filter(o => o.frutifero === true).length;
-  document.getElementById('s-infrut').textContent = oficios.filter(o => o.frutifero === false).length;
+  // Adiciona tentativas para cada operadora
+  ops.forEach(op => {
+    casos[casoIdx].tentativas.push({
+      id: Date.now() + Math.random(),
+      operadora: op,
+      numeroOficio,
+      dataOficio,
+      status: 'Enviado',
+      obs: document.getElementById('obs').value
+    });
+  });
 
-  const wrap = document.getElementById('table-wrap');
-  if (list.length === 0) {
-    wrap.innerHTML = '<div class="empty-state"><div style="font-size:28px">📂</div><p>Nenhum caso encontrado para este filtro.</p></div>';
+  salvarStorage();
+  alert(`✅ ${ops.length} tentativa(s) registrada(s) no caso BOP ${bo}!`);
+  renderHistorico();
+}
+
+function salvarStorage() {
+  localStorage.setItem('oficios_casos', JSON.stringify(casos));
+  // Tenta sincronizar com Google Sheets se configurado
+  const url = configs.gscript;
+  if (url && url.startsWith('https://')) {
+    fetch(url, {
+      method: 'POST',
+      body: JSON.stringify({ casos })
+    }).catch(() => {});
+  }
+}
+
+// ===================== HISTÓRICO =====================
+function renderHistorico() {
+  const tbody = document.getElementById('tbody-historico');
+  if (!casos.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#888;padding:20px">Nenhum caso registrado ainda.</td></tr>';
     return;
   }
 
-  wrap.innerHTML = `<table>
-    <thead><tr>
-      <th>Nº BO / IP</th><th>IMEI 1 / 2</th><th>Operadora</th>
-      <th>Envio</th><th>Prazo até</th><th>Tentativas</th>
-      <th>Status</th><th>Receptador</th><th>Ações</th>
-    </tr></thead>
-    <tbody>${list.map(o => {
-      const st = getStatusOficio(o);
-      const days = getDays(o.data_envio, o.prazo);
-      const tents = tentativas[o.id] || [];
-      let badge = '';
-      let daysHtml = '';
-      if (st === 'Frutífero') badge = '<span class="badge badge-frutifera">Frutífero</span>';
-      else if (st === 'Infrutífero') badge = '<span class="badge badge-infrutifera">Infrutífero</span>';
-      else if (st === 'Respondido') badge = '<span class="badge badge-done">Respondido</span>';
-      else if (st === 'Vencido') { badge = '<span class="badge badge-late">Vencido</span>'; daysHtml = `<div class="days-info days-late">${Math.abs(days)}d atraso</div>`; }
-      else { badge = '<span class="badge badge-wait">Aguardando</span>'; daysHtml = `<div class="days-info ${days<=2?'days-warn':'days-ok'}">vence em ${days}d</div>`; }
-      const receptador = o.receptador_nome ? `<span style="font-size:11px;color:var(--success)">${o.receptador_nome}</span>` : '<span style="color:var(--text-faint);font-size:11px">—</span>';
-      const imei2html = o.imei2 ? `<div class="days-info days-ok">${o.imei2}</div>` : '';
-      const tentCount = tents.length > 0 ? `<span class="badge badge-purple">${tents.length}ª tent.</span>` : '<span style="color:var(--text-faint);font-size:11px">—</span>';
-      return `<tr class="clickable" onclick="openModal(${o.id})">
-        <td><strong>${o.bo}</strong>${o.obs ? `<div class="days-info days-ok">${o.obs}</div>` : ''}</td>
-        <td class="mono-text">${o.imei}${imei2html}</td>
-        <td><span class="badge badge-op">${o.operadora}</span></td>
-        <td class="mono-text">${fmtDate(o.data_envio)}</td>
-        <td class="mono-text">${fmtDate(prazoDate(o.data_envio, o.prazo))}${daysHtml}</td>
-        <td>${tentCount}</td>
-        <td>${badge}</td>
-        <td>${receptador}</td>
-        <td onclick="event.stopPropagation()">
-          <button class="act-btn edit" onclick="openModal(${o.id})">Abrir</button>
-          <button class="act-btn del" onclick="delOficio(${o.id})">Excluir</button>
+  tbody.innerHTML = casos.slice().reverse().map((caso, ri) => {
+    const realIdx = casos.length - 1 - ri;
+    const imeisTxt = caso.imeis.join(' | ');
+    const totalTent = caso.tentativas.length;
+    const ultimoStatus = totalTent ? caso.tentativas[totalTent-1].status : '-';
+    const badgeClass = { 'Enviado':'badge-enviado','Respondido com dados':'badge-respondido','Sem dados':'badge-sem-dados','Reiterado':'badge-reiterado' }[ultimoStatus] || 'badge-enviado';
+
+    const tentativasHTML = caso.tentativas.map((t, ti) => {
+      const bc = { 'Enviado':'badge-enviado','Respondido com dados':'badge-respondido','Sem dados':'badge-sem-dados','Reiterado':'badge-reiterado' }[t.status] || 'badge-enviado';
+      return `<div class="tentativa-item">
+        <span><strong>${t.operadora}</strong></span>
+        <span>Ofício: <strong>${t.numeroOficio}</strong></span>
+        <span>${t.dataOficio ? new Date(t.dataOficio+'T12:00:00').toLocaleDateString('pt-BR') : '-'}</span>
+        <span class="badge ${bc}">${t.status}</span>
+        <span style="color:#555">${t.obs||''}</span>
+        <button class="btn btn-info btn-sm" onclick="abrirModalStatus(${realIdx},${ti})">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="excluirTentativa(${realIdx},${ti})">🗑️</button>
+      </div>`;
+    }).join('');
+
+    return `
+      <tr class="caso-row" onclick="toggleTentativas(${realIdx})">
+        <td>📁 ${caso.bo}</td>
+        <td style="font-size:0.8rem">${imeisTxt}</td>
+        <td>${caso.dataFato ? new Date(caso.dataFato+'T12:00:00').toLocaleDateString('pt-BR') : '-'}</td>
+        <td>${caso.autoridade || '-'}</td>
+        <td><span class="badge ${badgeClass}">${ultimoStatus}</span> <small style="color:#888">(${totalTent} tentativa(s))</small></td>
+        <td>
+          <button class="btn btn-warning btn-sm" onclick="event.stopPropagation();abrirModalReiterar(${realIdx})">🔁 Reiterar</button>
+          <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();excluirCaso(${realIdx})">🗑️</button>
+        </td>
+      </tr>
+      <tr class="tentativas-row" id="tent-row-${realIdx}">
+        <td colspan="6">
+          <div class="tentativas-inner">
+            <strong style="font-size:0.85rem;color:#1a3a5c">📋 Histórico de Tentativas:</strong><br><br>
+            ${tentativasHTML || '<em style="color:#888">Nenhuma tentativa registrada.</em>'}
+          </div>
         </td>
       </tr>`;
-    }).join('')}</tbody></table>`;
+  }).join('');
 }
 
-// MODAL
-function openModal(id) {
-  currentOficioId = id;
-  const o = oficios.find(x => x.id === id);
-  if (!o) return;
-  const tents = tentativas[id] || [];
-  document.getElementById('modal-title').textContent = 'Caso: ' + o.bo;
-
-  const frutChecked = o.frutifero === true;
-  const infrutChecked = o.frutifero === false;
-  const receptadorVisible = frutChecked ? 'visible' : '';
-
-  document.getElementById('modal-body').innerHTML = `
-    <!-- DADOS PRINCIPAIS -->
-    <div class="modal-section">
-      <div class="modal-section-title">Dados do dispositivo</div>
-      <div class="modal-grid-4">
-        <div><label>Nº BO / IP</label><input id="m-bo" value="${o.bo}"></div>
-        <div><label>IMEI 1</label><input id="m-imei" value="${o.imei}"></div>
-        <div><label>IMEI 2</label><input id="m-imei2" value="${o.imei2||''}"></div>
-        <div><label>Modelo / Obs.</label><input id="m-obs" value="${o.obs||''}"></div>
-      </div>
-    </div>
-
-    <!-- OFÍCIO ATUAL -->
-    <div class="modal-section">
-      <div class="modal-section-title">Ofício atual</div>
-      <div class="modal-grid-4">
-        <div><label>Operadora</label>
-          <select id="m-op">
-            ${['Claro','Vivo','TIM','Oi','Outra'].map(op => `<option value="${op}" ${o.operadora===op?'selected':''}>${op}</option>`).join('')}
-          </select>
-        </div>
-        <div><label>Data de envio</label><input id="m-data" type="date" value="${o.data_envio}"></div>
-        <div><label>Prazo (dias)</label>
-          <select id="m-prazo">
-            ${[5,10,15,30].map(p => `<option value="${p}" ${o.prazo===p?'selected':''}>${p} dias</option>`).join('')}
-          </select>
-        </div>
-        <div style="display:flex;align-items:flex-end">
-          <button class="btn btn-secondary" style="width:100%;font-size:12px" onclick="addTentativa()">+ Novo reenvio</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- TENTATIVAS ANTERIORES -->
-    ${tents.length > 0 ? `
-    <div class="modal-section">
-      <div class="modal-section-title">Histórico de reenvios (${tents.length})</div>
-      ${tents.map((t,i) => {
-        const ts = t.respondido ? (t.frutifero === true ? 'Frutífero' : t.frutifero === false ? 'Infrutífero' : 'Respondido') : 'Enviado';
-        let tbadge = ts === 'Frutífero' ? 'badge-frutifera' : ts === 'Infrutífero' ? 'badge-infrutifera' : ts === 'Respondido' ? 'badge-done' : 'badge-wait';
-        return `<div class="tentativa-item">
-          <div class="tentativa-header">
-            <span class="tentativa-num">${i+1}ª tentativa</span>
-            <span class="badge badge-op">${t.operadora}</span>
-            <span class="badge ${tbadge}">${ts}</span>
-            <span class="mono-text" style="font-size:11px">${fmtDate(t.data_envio)} · prazo ${t.prazo}d</span>
-          </div>
-          ${t.obs ? `<div style="font-size:12px;color:var(--text-muted)">${t.obs}</div>` : ''}
-          ${t.receptador_nome ? `<div style="font-size:12px;color:var(--success);margin-top:4px">Receptador: ${t.receptador_nome} · CPF: ${t.receptador_cpf||'—'}</div>` : ''}
-        </div>`;
-      }).join('')}
-    </div>` : ''}
-
-    <!-- RESULTADO -->
-    <div class="modal-section">
-      <div class="modal-section-title">Resultado da resposta</div>
-      <div style="margin-bottom:8px;font-size:13px;color:var(--text-muted)">A resposta da operadora foi frutífera?</div>
-      <div class="resultado-toggle">
-        <button class="resultado-btn frutifera ${frutChecked?'active':''}" id="btn-frut" onclick="toggleResultado(true)">✓ Frutífera</button>
-        <button class="resultado-btn infrutifera ${infrutChecked?'active':''}" id="btn-infrut" onclick="toggleResultado(false)">✗ Infrutífera</button>
-      </div>
-      <div class="receptador-fields ${receptadorVisible}" id="receptador-fields">
-        <div style="margin-top:12px;margin-bottom:8px;font-family:var(--mono);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-muted)">Dados do receptador</div>
-        <div class="modal-grid-2" style="margin-bottom:8px">
-          <div><label>Nome completo</label><input id="m-rec-nome" value="${o.receptador_nome||''}"></div>
-          <div><label>CPF</label><input id="m-rec-cpf" value="${o.receptador_cpf||''}" placeholder="000.000.000-00"></div>
-        </div>
-        <div class="modal-grid-2" style="margin-bottom:10px">
-          <div><label>Endereço</label><input id="m-rec-end" value="${o.receptador_endereco||''}"></div>
-          <div><label>Contato</label><input id="m-rec-cont" value="${o.receptador_contato||''}"></div>
-        </div>
-        <div>
-          <label>Anexar PDF da resposta da operadora</label>
-          <input type="file" id="m-pdf" accept=".pdf">
-          ${o.pdf_url ? `<div style="margin-top:6px"><a class="pdf-link" href="${o.pdf_url}" target="_blank">📄 Ver PDF anexado anteriormente</a></div>` : ''}
-        </div>
-      </div>
-    </div>
-  `;
-
-  window._modalFrutifero = o.frutifero;
-  document.getElementById('modal-overlay').classList.add('open');
+function toggleTentativas(idx) {
+  const row = document.getElementById(`tent-row-${idx}`);
+  if (row) row.classList.toggle('open');
 }
 
-function toggleResultado(frut) {
-  window._modalFrutifero = frut;
-  document.getElementById('btn-frut').className = 'resultado-btn frutifera' + (frut === true ? ' active' : '');
-  document.getElementById('btn-infrut').className = 'resultado-btn infrutifera' + (frut === false ? ' active' : '');
-  const rf = document.getElementById('receptador-fields');
-  rf.className = 'receptador-fields' + (frut === true ? ' visible' : '');
+// ===================== MODAL REITERAR =====================
+function abrirModalReiterar(casoIdx) {
+  document.getElementById('modal-caso-idx').value = casoIdx;
+  document.getElementById('modal-tent-idx').value = '';
+  document.getElementById('modal-modo').value = 'reiterar';
+  document.getElementById('modal-titulo').textContent = '🔁 Registrar Reiteração';
+  document.getElementById('modal-reiterar-campos').style.display = 'block';
+  document.getElementById('modal-status-campos').style.display = 'none';
+  document.getElementById('modal-num-oficio').value = '';
+  document.getElementById('modal-data-oficio').value = new Date().toISOString().split('T')[0];
+  document.getElementById('modal-obs-val').value = 'Reiteração – sem resposta anterior';
+  document.getElementById('modal-reiterar').classList.add('open');
 }
 
-async function addTentativa() {
-  if (!currentOficioId) return;
-  const o = oficios.find(x => x.id === currentOficioId);
-  const op = document.getElementById('m-op').value;
-  const data = document.getElementById('m-data').value;
-  const prazo = parseInt(document.getElementById('m-prazo').value);
-  if (!data) { toast('Informe a data de envio.', true); return; }
-  try {
-    const r = await fetch(API + '/tentativas', {
-      method: 'POST', headers: H,
-      body: JSON.stringify({ oficio_id: currentOficioId, operadora: op, data_envio: data, prazo, respondido: false })
+function abrirModalStatus(casoIdx, tentIdx) {
+  document.getElementById('modal-caso-idx').value = casoIdx;
+  document.getElementById('modal-tent-idx').value = tentIdx;
+  document.getElementById('modal-modo').value = 'status';
+  document.getElementById('modal-titulo').textContent = '✏️ Atualizar Status';
+  document.getElementById('modal-reiterar-campos').style.display = 'none';
+  document.getElementById('modal-status-campos').style.display = 'block';
+  document.getElementById('modal-status-val').value = casos[casoIdx].tentativas[tentIdx].status;
+  document.getElementById('modal-obs-val').value = casos[casoIdx].tentativas[tentIdx].obs || '';
+  document.getElementById('modal-reiterar').classList.add('open');
+}
+
+function fecharModal() {
+  document.getElementById('modal-reiterar').classList.remove('open');
+}
+
+function confirmarModal() {
+  const casoIdx = parseInt(document.getElementById('modal-caso-idx').value);
+  const modo = document.getElementById('modal-modo').value;
+  const obs = document.getElementById('modal-obs-val').value;
+
+  if (modo === 'reiterar') {
+    const numOficio = document.getElementById('modal-num-oficio').value;
+    const dataOficio = document.getElementById('modal-data-oficio').value;
+    const operadora = document.getElementById('modal-operadora').value;
+    if (!numOficio) return alert('Informe o Nº do novo ofício.');
+
+    casos[casoIdx].tentativas.push({
+      id: Date.now() + Math.random(),
+      operadora,
+      numeroOficio: numOficio,
+      dataOficio,
+      status: 'Reiterado',
+      obs
     });
-    if (!r.ok) throw new Error();
-    toast('Reenvio registrado.');
-    await fetchAll();
-    openModal(currentOficioId);
-  } catch(e) { toast('Erro ao registrar reenvio.', true); }
+  } else {
+    const tentIdx = parseInt(document.getElementById('modal-tent-idx').value);
+    casos[casoIdx].tentativas[tentIdx].status = document.getElementById('modal-status-val').value;
+    casos[casoIdx].tentativas[tentIdx].obs = obs;
+  }
+
+  salvarStorage();
+  fecharModal();
+  renderHistorico();
 }
 
-async function saveModal() {
-  if (!currentOficioId) return;
-  const btn = document.getElementById('btn-save-modal');
-  btn.disabled = true; btn.textContent = 'Salvando...';
+function excluirTentativa(casoIdx, tentIdx) {
+  if (!confirm('Excluir esta tentativa?')) return;
+  casos[casoIdx].tentativas.splice(tentIdx, 1);
+  salvarStorage();
+  renderHistorico();
+}
 
-  try {
-    let pdf_url = null;
-    const pdfFile = document.getElementById('m-pdf') && document.getElementById('m-pdf').files[0];
+function excluirCaso(casoIdx) {
+  if (!confirm('Excluir este caso e todo o histórico?')) return;
+  casos.splice(casoIdx, 1);
+  salvarStorage();
+  renderHistorico();
+}
 
-    if (pdfFile) {
-      const fileName = `${currentOficioId}_${Date.now()}.pdf`;
-      const upRes = await fetch(`${STORAGE}/object/${BUCKET}/${fileName}`, {
-        method: 'POST',
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/pdf' },
-        body: pdfFile
+function exportarCSV() {
+  if (!casos.length) return alert('Nenhum registro para exportar.');
+  const header = ['Nº BO','IMEIs','Data Fato','Autoridade','Operadora','Nº Ofício','Data Ofício','Status','Obs'];
+  const rows = [];
+  casos.forEach(c => {
+    if (!c.tentativas.length) {
+      rows.push([c.bo, c.imeis.join(';'), c.dataFato, c.autoridade, '-','-','-','-','-'].map(v=>`"${v||''}"`).join(','));
+    } else {
+      c.tentativas.forEach(t => {
+        rows.push([c.bo, c.imeis.join(';'), c.dataFato, c.autoridade, t.operadora, t.numeroOficio, t.dataOficio, t.status, t.obs].map(v=>`"${v||''}"`).join(','));
       });
-      if (upRes.ok) {
-        pdf_url = `${STORAGE}/object/public/${BUCKET}/${fileName}`;
-      } else {
-        toast('PDF não pôde ser enviado, mas os demais dados serão salvos.', true);
-      }
     }
-
-    const payload = {
-      bo: document.getElementById('m-bo').value.trim(),
-      imei: document.getElementById('m-imei').value.trim(),
-      imei2: document.getElementById('m-imei2').value.trim() || null,
-      obs: document.getElementById('m-obs').value.trim() || null,
-      operadora: document.getElementById('m-op').value,
-      data_envio: document.getElementById('m-data').value,
-      prazo: parseInt(document.getElementById('m-prazo').value),
-      respondido: window._modalFrutifero !== undefined && window._modalFrutifero !== null,
-      frutifero: window._modalFrutifero !== undefined ? window._modalFrutifero : null,
-    };
-
-    if (window._modalFrutifero === true) {
-      payload.receptador_nome = document.getElementById('m-rec-nome').value.trim() || null;
-      payload.receptador_cpf = document.getElementById('m-rec-cpf').value.trim() || null;
-      payload.receptador_endereco = document.getElementById('m-rec-end').value.trim() || null;
-      payload.receptador_contato = document.getElementById('m-rec-cont').value.trim() || null;
-      if (pdf_url) payload.pdf_url = pdf_url;
-    }
-
-    const r = await fetch(API + '/oficios?id=eq.' + currentOficioId, {
-      method: 'PATCH', headers: H, body: JSON.stringify(payload)
-    });
-    if (!r.ok) throw new Error();
-    toast('Alterações salvas com sucesso.');
-    closeModal();
-    await fetchAll();
-  } catch(e) { toast('Erro ao salvar alterações.', true); }
-  finally { btn.disabled = false; btn.textContent = 'Salvar alterações'; }
+  });
+  const csv = [header.join(','), ...rows].join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
+  saveAs(blob, `historico_oficios_${new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')}.csv`);
 }
 
-function closeModal() {
-  document.getElementById('modal-overlay').classList.remove('open');
-  currentOficioId = null;
+// ===================== CONFIGURAÇÕES =====================
+function carregarConfigs() {
+  ['autoridade','cargo','unidade','risp','cidade','endereco','email','telefone','gscript'].forEach(k => {
+    const el = document.getElementById('cfg-'+k);
+    if (el) el.value = configs[k] || '';
+  });
 }
 
-function closeModalOutside(e) {
-  if (e.target === document.getElementById('modal-overlay')) closeModal();
+function salvarConfigs() {
+  ['autoridade','cargo','unidade','risp','cidade','endereco','email','telefone','gscript'].forEach(k => {
+    const el = document.getElementById('cfg-'+k);
+    if (el) configs[k] = el.value;
+  });
+  localStorage.setItem('oficios_configs', JSON.stringify(configs));
+  document.getElementById('cfg-msg').innerHTML = '<div class="alert alert-success" style="margin-top:10px">✅ Configurações salvas!</div>';
+  setTimeout(() => document.getElementById('cfg-msg').innerHTML = '', 3000);
+  if (configs.autoridade) document.getElementById('autoridade').value = configs.autoridade;
+  if (configs.cargo) document.getElementById('cargo').value = configs.cargo;
 }
 
-document.getElementById('f-data').value = today();
-fetchAll();
-setInterval(fetchAll, 60000);
+// ===================== INIT =====================
+window.onload = () => {
+  document.getElementById('dataOficio').value = new Date().toISOString().split('T')[0];
+  if (configs.autoridade) document.getElementById('autoridade').value = configs.autoridade;
+  if (configs.cargo) document.getElementById('cargo').value = configs.cargo;
+};
 </script>
 </body>
 </html>
